@@ -248,6 +248,7 @@ lowers s = sum [1 | c <- s, c >= 'a' && c <= 'z']
 count :: Char -> String -> Int
 count c s = sum [1 | c' <- s, c' == c] 
 
+-- caesar cypher
 let2int :: Char -> Int
 let2int c = ord c - ord 'a'
 
@@ -258,12 +259,38 @@ islower :: Char -> Bool
 islower c = c >= 'a' && c <= 'z'
 
 shift :: Char -> Int -> Char
---shift c n = if islower c then int2let ((let2int c + n) `mod` 25) else c
-shift c n | islower c = int2let ((let2int c + n) `mod` 25)
-          | otherwise = c
+shift c n = if islower c then int2let ((let2int c + n) `mod` 25) else c
+--shift c n | islower c = int2let ((let2int c + n) `mod` 25)
+--          | otherwise = c
 
 encode :: String -> Int -> String
 encode s n = [shift c n | c  <- s]
+
+--decode
+table :: [Float]
+table = [8.167, 1.492, 2.782, 4.253, 12.702, 2.228, 2.015, 6.094, 6.966, 
+        0.153, 0.772, 4.025, 2.406, 6.749, 7.507, 1.929, 0.095, 5.987, 6.327, 
+        9.056, 2.758, 0.978, 2.360, 0.150, 1.974, 0.074]
+
+percent :: Int -> Int -> Float
+percent x y = (fromIntegral x / fromIntegral y) * 100
+
+freq :: String -> [Float]
+freq s = [percent (count x s) (lowers s) | x <- ['a'..'z']]
+
+chisqr :: [Float] -> [Float] -> Float
+chisqr os es = sum [((o - e)^2)/e | (o, e) <- zip os es] 
+
+rotate :: [a] -> Int -> [a]
+rotate xs n = drop n xs ++ take n xs
+
+crack :: String -> String
+crack s = encode lows factor
+    where lows = [toLower c | c <- s]
+          rotations = [rotate (freq s) n | n <- [0..25]]
+          ns = [0..]
+          chis = [chisqr os table | os <- rotations]
+          factor = -snd(minimum(zip chis ns))
 
 -- exercises
 -- 1
@@ -298,6 +325,139 @@ pairsConcat xs ys = concat [[(x, y) | y <- ys] | x <- xs ]
 positionsFind :: Eq a => a -> [a] -> [Int]
 positionsFind x xs = [i | i <- find x (zip xs [0..])]
 
---9
+-- 9
 scalarProduct :: [Int] -> [Int] -> Int
 scalarProduct xs ys = sum [x*y | (x, y) <- zip xs ys]
+
+-- 10
+-- just changed the crack function to convert string to lowercase
+
+-- ch. 6
+-- recursion
+fac :: Int -> Int
+fac 0 = 1
+fac 1 = 1
+fac n | n > 0 = n * fac(n-1)
+      | otherwise = -1
+
+-- recursion on lists
+productrec :: Num a => [a] -> a
+productrec [] = 1
+productrec (x:xs) = x * productrec xs
+
+reverserec :: [a] -> [a]
+reverserec [] = []
+reverserec (x:xs) = reverserec xs ++ [x]
+
+insert :: Ord a => a -> [a] -> [a]
+insert x [] = [x]
+insert x (y:xs) | x <= y = x:y:xs
+                | otherwise = y : insert x xs
+
+isort :: Ord a => [a] -> [a]
+isort [] = []
+isort (x:xs) = insert x (isort xs) 
+
+-- recursion with multiple arguments
+
+ziprec :: [a] -> [b] -> [(a, b)]
+ziprec _ [] = []
+ziprec [] _ = []
+ziprec (x:xs) (y:ys) = [(x, y)] ++ ziprec xs ys 
+
+droprec :: Int -> [a] -> [a]
+droprec 0 xs = xs
+droprec _ [] = []
+droprec n (x:xs) = droprec (n-1) xs
+
+-- multiple recursion
+fib :: Int -> Int
+fib 0 = 0
+fib 1 = 1
+fib n = fib(n-2) + fib (n-1)
+
+qsort :: Ord a => [a] -> [a]
+qsort [] = []
+qsort (x:xs) = (qsort smaller) ++ [x] ++ (qsort larger)
+    where smaller = [y | y <- xs, y <= x]
+          larger = [z | z <-xs, z > x]
+
+-- mutual recursion
+evenrec :: Int -> Bool
+evenrec 0 = True
+evenrec n = _odd (n-1)
+
+_odd :: Int -> Bool
+_odd 0 = False
+_odd n = evenrec (n-1)
+
+-- exercises
+-- 2
+sumdown :: Int -> Int
+sumdown 1 = 1
+sumdown n = n + sumdown (n-1)
+ -- 3
+exprec :: Int -> Int -> Int
+exprec _ 0 = 1
+exprec n p = n * (exprec n (p-1))
+
+-- 4
+euclid :: Int -> Int -> Int
+euclid x y | x == y = x
+           | otherwise = euclid (min x y) ((max x y) - (min x y))
+
+-- 6
+andiusrecs :: [Bool] -> Bool
+andiusrecs [True] = True
+andiusrecs (False:_) = False
+andiusrecs (True:bs) = andiusrecs bs
+
+concatrec :: [[a]] -> [a]
+concatrec [] = []
+concatrec (xs:xss) = xs ++ concatrec xss
+
+replicaterec :: [a] -> [a]
+replicaterec [] = []
+replicaterec (x:xs) = x : replicaterec xs
+
+nth :: (Eq a, Num a) => [a] -> Int -> a
+nth [] _ = -1
+nth (x:xs) n | n == 0 = x
+             | otherwise = xs `nth` (n-1) 
+
+elemrec :: Eq a => a -> [a] -> Bool
+elemrec _ [] = False
+elemrec x (y:xs) | x == y = True
+                 | otherwise = elemrec x xs
+
+-- 7
+merge :: Ord a => [a] -> [a] -> [a]
+merge xs [] = xs
+merge [] ys = ys
+merge (x:xs) (y:ys) | x <= y = x : merge xs (y:ys)
+                    | x > y = y : merge (x:xs) (ys)
+
+-- 8
+halverec :: [a] -> ([a], [a])
+halverec xs = (take half xs, drop half xs)
+    where half = (length xs) `div` 2
+
+mergesort :: Ord a => [a] -> [a]
+mergesort [] = []
+mergesort [x] = [x]
+mergesort xs = (mergesort (fst(halves))) `merge` (mergesort (snd(halves)))
+    where halves = halverec xs
+
+-- 9
+sumrec :: Num a => [a] -> a
+sumrec [] = 0
+sumrec (x:xs) = x + sumrec xs
+
+takerec :: Int -> [a] -> [a]
+takerec _ [] = []
+takerec 0 _ = []
+takerec n (x:xs) = x : takerec (n-1) xs
+
+lastrec :: [a] -> a
+lastrec [x] = x
+lastrec xs = lastrec(tail xs)
