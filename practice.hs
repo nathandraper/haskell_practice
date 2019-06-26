@@ -1,4 +1,6 @@
 import Data.Char
+import Data.List (sort)
+
 -- beginning practice
 {-
     nested
@@ -461,3 +463,131 @@ takerec n (x:xs) = x : takerec (n-1) xs
 lastrec :: [a] -> a
 lastrec [x] = x
 lastrec xs = lastrec(tail xs)
+
+-- ch 7
+-- higher order functions
+-- composition operator
+sumsqreven :: [Int] -> Int
+sumsqreven = sum . map (^2) . filter even
+
+-- foldr
+productf :: Num a => [a] -> a
+productf = foldr (*) 1
+
+lengthf :: [a] -> Int
+lengthf = foldr (\_ n -> n+1) 0
+
+reversef :: [a] -> [a]
+reversef = foldr (\x xs -> xs ++ [x] ) []
+
+-- foldl
+lengthfl :: [a] -> Int
+lengthfl = foldl(\n _ -> n+1) 0
+
+reversefl :: [a] -> [a]
+reversefl = foldl (\xs x -> x:xs) []
+
+-- binary string 
+bin2int :: [Int] -> Int
+bin2int bits =  sum [w*b | (b,w) <- weights]
+    where weights = zip (reversefl bits) (iterate (*2) 1) 
+
+bin2intf :: [Int] -> Int
+bin2intf = foldr (\b s -> b + 2*s) 0
+
+int2bin :: Int -> [Int]
+int2bin 0 = []
+int2bin n = n `mod` 2 : int2bin(n `div` 2)
+
+make8 :: [Int] -> [Int]
+make8 bits = take 8 (bits ++ (repeat 0))
+
+encode2bin :: String -> [Int]
+encode2bin =  concat.map (make8.int2bin.ord)
+
+chop :: [Int] -> [[Int]]
+chop xs | xs == [] = []
+        | otherwise = (take 8 xs) : chop (drop 8 xs)
+
+decode2str :: [Int] -> String
+decode2str xs = map (chr.bin2intf) (chop xs)
+    where 
+
+channel :: a -> a
+channel a = id a
+
+transmit :: String -> String
+transmit = decode2str.channel.encode2bin
+
+-- voting example
+-- first past the post
+countv :: Eq a => a -> [a] -> Int
+countv x = length.filter(==x)
+
+rmdups :: Eq a => [a] -> [a]
+rmdups [] = []
+rmdups (x:xs) = x : filter (/=x) (rmdups xs)
+
+result :: Ord a => [a] -> [(Int, a)]
+result xs = sort [(countv x xs, x) | x <- rmdups xs] 
+
+winner :: Ord a => [a] -> a
+winner = snd.last.result
+
+-- alternative choices
+rmempty :: Eq a => [[a]] -> [[a]]
+rmempty = filter (/= [])
+
+elim :: Eq a => a -> [[a]] -> [[a]]
+elim x = map (filter (/=x))
+
+rank :: Ord a => [[a]] -> [a]
+rank = map snd.result.map head
+
+winner2 :: Ord a => [[a]] -> a
+winner2 xs = case rank (rmempty xs) of
+    [win] -> win
+    (y:ys) -> winner2 (elim y xs)
+
+-- exercises
+-- 1
+-- map f (filter p xs)
+
+--2
+myall :: (a -> Bool) -> [a] -> Bool
+myall f = and.map f
+
+myany :: (a -> Bool) -> [a] -> Bool
+myany f = or.map f
+
+mytakewhile :: (a-> Bool) -> [a] -> [a]
+mytakewhile f [] = []
+mytakewhile f (x:xs) | not(f x) = []
+                     | otherwise = x : mytakewhile f xs
+
+mydropwhile :: (a-> Bool) -> [a] -> [a]
+mydropwhile f [] = []
+mydropwhile f (x:xs) | not(f x) = x:xs
+                     | otherwise = mydropwhile f xs
+
+-- 3
+mymapf :: (a -> a) -> [a] -> [a]
+mymapf f = foldr (\x y -> (f x):y) []
+
+myfilterp :: (a -> Bool) -> [a] -> [a]
+myfilterp p = foldr filt []
+    where filt x y = if p x then x:y else y
+
+dec2int :: [Int] -> Int
+dec2int xs = foldl (\x (y, w) -> x + y*(10^w) ) 0 weighted
+    where weighted = reverse(zip(reverse xs) (iterate (+1) 0))
+
+mycurry :: ((a, b) -> c) -> (a -> b -> c)
+mycurry f = (\x y -> f (x, y))
+
+myuncurry :: (a -> b -> c) -> ((a, b) -> c)
+myuncurry f = (\(x, y) -> f x y)
+
+testcurry :: Num a => (a, a) -> a
+testcurry (x, y) = x + y
+
