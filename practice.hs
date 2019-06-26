@@ -488,9 +488,9 @@ reversefl :: [a] -> [a]
 reversefl = foldl (\xs x -> x:xs) []
 
 -- binary string 
-bin2int :: [Int] -> Int
-bin2int bits =  sum [w*b | (b,w) <- weights]
-    where weights = zip (reversefl bits) (iterate (*2) 1) 
+--bin2int :: [Int] -> Int
+--bin2int bits =  sum [w*b | (b,w) <- weights]
+    --where weights = zip (reversefl bits) (iterate (*2) 1) 
 
 bin2intf :: [Int] -> Int
 bin2intf = foldr (\b s -> b + 2*s) 0
@@ -578,10 +578,12 @@ myfilterp :: (a -> Bool) -> [a] -> [a]
 myfilterp p = foldr filt []
     where filt x y = if p x then x:y else y
 
+-- 4
 dec2int :: [Int] -> Int
 dec2int xs = foldl (\x (y, w) -> x + y*(10^w) ) 0 weighted
     where weighted = reverse(zip(reverse xs) (iterate (+1) 0))
 
+-- 5
 mycurry :: ((a, b) -> c) -> (a -> b -> c)
 mycurry f = (\x y -> f (x, y))
 
@@ -591,3 +593,128 @@ myuncurry f = (\(x, y) -> f x y)
 testcurry :: Num a => (a, a) -> a
 testcurry (x, y) = x + y
 
+-- 6
+unfold :: (a -> Bool) -> (a -> b) -> (a -> a) -> a -> [b]
+unfold p h t x | p x = []
+               | otherwise = h x : unfold p h t (t x)
+
+int2binuf :: Int -> [Int]
+int2binuf 0 = [0]
+int2binuf x = unfold (==0) (`mod` 2) (`div` 2) x
+
+chop8uf :: [Int] -> [[Int]]
+chop8uf = unfold (==[]) (take 8) (drop 8)
+
+mapuf :: Eq a => (a -> b) -> [a] -> [b]
+mapuf f =  unfold (==[]) (f.head) (tail) 
+
+iterateuf :: (a -> a) -> a -> [a]
+iterateuf f = unfold (\a -> False) f f
+
+-- 7 
+addparity :: [Int] -> [Int]
+addparity xs = xs ++ [((sum xs) `mod` 2)]
+
+checkparity :: [Int] -> [Int]
+checkparity xs | (last xs) == ((sum (take 8 xs)) `mod` 2) = take 8 xs 
+               | otherwise = error "parity error"
+
+encode2binp :: String -> [Int]
+encode2binp = concat.map addparity.map (make8.int2bin.ord)
+
+chop9 :: [Int] -> [[Int]]
+chop9 = unfold (==[]) (take 9) (drop 9)
+
+decode2strp :: [Int] -> String
+decode2strp =  map (chr.bin2intf.checkparity).chop9
+
+badchannel :: [Int] -> [Int]
+badchannel = tail
+
+transmitwparity :: String -> String
+transmitwparity =  decode2strp.channel.encode2binp
+
+altmap :: Foldable t1 => (t2 -> a) -> (t2 -> a) -> t1 t2 -> [a]
+altmap f g = foldr alt []
+    where alt x y | even(length y) = (f x):y
+                  | otherwise = (g x):y
+
+int2dec :: Int -> [Int]
+int2dec 0 = []
+int2dec x = int2dec (x `div` 10) ++ [x `mod` 10]
+
+luhngen :: Int -> Bool
+luhngen x | (sum(altmap id luhndouble dec) `mod` 10) == 0 = True
+          | otherwise = False
+          where dec = int2dec x
+
+-- ch. 8
+-- type declarations
+type Pos = (Int, Int)
+type Trans = Pos -> Pos
+
+-- parameterizing types with other types
+type Pair a = (a, a) -- a pair of two of the same type
+type Assoc k v = [(k, v)]
+
+findt :: Eq k => k -> Assoc k v -> v
+findt k t = head [v | (k', v) <- t, k' == k]
+
+-- data declarations
+data Move = North | West | South | East
+
+move :: Move -> Pos -> Pos
+move North (x, y) = (x, y+1) 
+move West (x, y) = (x-1, y) 
+move South (x, y) = (x, y-1) 
+move East (x, y) = (x+1, y) 
+
+moves :: [Move] -> Pos -> Pos
+moves [] p = p
+moves (m:ms) p = moves ms (move m p)
+
+rev :: Move -> Move
+rev North = South
+rev South = North
+rev West = East
+rev East = West
+
+-- constructors in data class can have arguments
+data Shape = Circle Float | Rect Float Float
+
+squaret :: Float -> Shape
+squaret n = Rect n n
+
+area :: Shape -> Float
+area (Circle r) = pi * (r^2)
+area (Rect x y) = x*y
+
+data MyMaybe a = MyNothing | MyJust a
+    deriving Show
+
+safediv :: Int -> Int -> MyMaybe Int
+safediv _ 0 = MyNothing
+safediv x y = MyJust (x `div` y)
+
+safehead :: [a] -> MyMaybe a
+safehead [] = MyNothing
+safehead (x:xs) = MyJust x
+
+-- newtype declaration - type safety with no increased performance
+--newtype Nat = N Int
+
+-- recursive types
+data Nat = Zero | Succ Nat
+    deriving Show
+
+nat2int :: Nat -> Int
+nat2int Zero = 0
+nat2int (Succ n) = 1 + nat2int n
+
+int2nat :: Int -> Nat
+int2nat 0 = Zero
+int2nat n = Succ (int2nat (n-1))
+
+addnat :: Nat -> Nat -> Nat
+addnat Zero n = n
+addnat (Succ m) n = Succ((addnat m n))
