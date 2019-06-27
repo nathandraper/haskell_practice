@@ -511,7 +511,6 @@ chop xs | xs == [] = []
 
 decode2str :: [Int] -> String
 decode2str xs = map (chr.bin2intf) (chop xs)
-    where 
 
 channel :: a -> a
 channel a = id a
@@ -718,3 +717,208 @@ int2nat n = Succ (int2nat (n-1))
 addnat :: Nat -> Nat -> Nat
 addnat Zero n = n
 addnat (Succ m) n = Succ((addnat m n))
+
+-- list data type
+data Listd a = Nil | Cons a (Listd a)
+
+lengthd :: Listd a -> Int
+lengthd Nil = 0
+lengthd (Cons _ xs) = 1 + lengthd xs
+
+-- tree data type
+data Tree a = Leaf a | Node (Tree a) a (Tree a)
+
+flatten :: Tree a -> [a]
+flatten (Leaf x) = [x]
+flatten (Node t1 x t2) = (flatten t1) ++ [x] ++ (flatten t2)
+
+searchall :: Eq a => a -> Tree a -> Bool
+searchall x (Leaf y) = x==y
+searchall x (Node t1 y t2) = x == y || (searchall x t1) || (searchall x t2)
+
+searchtree :: Ord a => a -> Tree a -> Bool
+searchtree x (Leaf y) = x == y
+searchtree x (Node t1 y t2) | x == y = True
+                            | x < y = searchtree x t1
+                            | otherwise = searchtree x t2
+
+t :: Tree Int
+t = Node (Node (Leaf 1) 3 (Leaf 4)) 5
+         (Node (Leaf 6) 7 (Leaf 9))
+
+-- classes and inheritance
+-- Class Eq a where 
+-- (==), (/=) = a -> a -> Bool
+-- x /= y = not (x == y)
+
+-- instance Eq Bool where
+-- False == False = True
+-- True == True = True
+-- _ == _ = False
+
+-- class Eq => Ord a where
+-- (<), (<=), (>), (>=) :: a -> a -> Bool
+-- min, max             :: a -> a -> a
+
+-- min x y | x <= y = x
+--         | otherwise = y
+
+-- max x y | x <= y = y
+--         | otherwise = x
+
+-- instance Ord Bool where
+-- False < True = True
+-- _ < _ = False
+-- b <= c = (b < c) || (b == c)
+-- c > c = c < b
+-- b >= c = c <= b
+
+--deriving
+-- data Bool = False | True
+--      deriving (Eq, Ord, Show, Read)
+
+-- tautology checker
+data Prop = Const Bool | Var Char | Not Prop | And Prop Prop | Or Prop Prop | Imply Prop Prop
+type Subst = Assoc Char Bool
+
+p1 :: Prop
+p1 = And (Var 'A') (Not (Var 'A'))
+
+p2 :: Prop
+p2 = Imply (And (Var 'A') (Var 'B')) (Var 'A')
+
+p3 :: Prop
+p3 = Imply (Var 'A') (And (Var 'A') (Var 'B'))
+
+p4 :: Prop
+p4 = Imply (And (Var 'A') (Imply (Var 'A') (Var 'B'))) (Var 'B')
+
+implication :: Bool -> Bool -> Bool
+implication p q = not (p && (not q))
+
+eval :: Prop -> Subst -> Bool
+eval (Var c) s = findt c s
+eval (Not p) s = not (eval p s)
+eval (And p q) s = (eval p s) && (eval q s)
+eval (Imply p q) s = implication (eval p s) (eval q s)
+eval (Or p q) s = (eval p s) || (eval q s)
+
+vars :: Prop -> [Char]
+vars (Const _) = []
+vars (Var c) = [c]
+vars (Not p) = vars p
+vars (And p q) = vars p ++ vars q
+vars (Or p q) = vars p ++ vars q
+vars (Imply p q) = vars p ++ vars q
+
+bools :: Int -> [[Bool]]
+bools 0 = [[]]
+bools x = map (True:) bss ++ map (False: ) bss
+    where bss = bools (x - 1)
+
+substs :: Prop -> [Subst]
+substs p = map (zip vs) (bools (length vs))
+    where vs = rmdups (vars p)
+
+istaut :: Prop -> Bool
+istaut p = and [eval p s | s <- substs p]
+
+-- abstract machine
+data Expr = Val Int | Add Expr Expr
+data Op = EVAL Expr | ADD Int
+type Cont = [Op]
+
+evalam :: Expr -> Cont -> Int
+evalam (Val n) c = execam c n
+evalam (Add x y) c = evalam x (EVAL y : c)
+
+execam :: Cont -> Int -> Int
+execam [] n = n
+execam (EVAL y : c) n = evalam y (ADD n : c)
+execam (ADD m : c) n = execam c (n+m)
+
+adder :: Expr -> Int
+adder e = evalam e []
+
+-- exercises
+-- 1
+multnat :: Nat -> Nat -> Nat
+multnat x Zero = Zero
+multnat x (Succ Zero) = x
+multnat x (Succ y) = addnat x (multnat x y)
+
+-- 2
+searchtreeo :: Ord a => a -> Tree a -> Bool
+searchtreeo x (Leaf y) = x == y
+searchtreeo x (Node t1 y t2) = case compare x y of 
+    EQ -> True
+    LT -> searchtreeo x t1
+    GT -> searchtreeo x t2
+
+-- 3
+data Tree2 a = Leaf2 a | Node2 (Tree2 a) (Tree2 a)
+    deriving Show
+
+t2 :: Tree2 Int
+t2 = Node2 
+        (Node2 
+            (Node2 
+                (Leaf2 3) 
+                (Leaf2 5)
+                ) 
+            (Node2
+                (Leaf2 6)
+                (Leaf2 7)
+                )
+            )
+        (Node2 
+            (Leaf2 9) 
+            (Leaf2 11)
+            )
+
+countleaves :: Tree2 a -> Int
+countleaves (Leaf2 _) = 1
+countleaves (Node2 t1 t2) = countleaves t1 + countleaves t2
+
+isbalanced :: Tree2 a -> Bool
+isbalanced (Leaf2 _) = True
+isbalanced (Node2 t1 t2) = (abs diff <= 1) && isbalanced t1 && isbalanced t2
+    where diff = countleaves t1 - countleaves t2
+
+-- 4
+flatten2 :: Tree2 a -> [a]
+flatten2 (Leaf2 x) = [x]
+flatten2 (Node2 t1 t2) = (flatten2 t1) ++ (flatten2 t2)
+
+splittree :: [a] -> ([a],[a])
+splittree xs = (take n xs, drop n xs)
+    where n = length xs `div` 2
+
+balance :: [a] -> Tree2 a
+balance [x] = Leaf2 x
+balance xs = Node2 (balance l) (balance r)
+    where spl = splittree xs
+          l = fst spl
+          r = snd spl
+
+-- 5
+folde :: (Int -> a) -> (a -> a -> a) -> Expr -> a
+folde f g (Val x) = f x
+folde f g (Add x y) = g (folde f g x) (folde f g y)
+
+expr :: Expr
+expr = Add
+            (
+            Add
+                (Val 4)
+                (Add 
+                    (Val 5)
+                    (Val 4)
+                )
+            )
+            (
+            Add 
+                (Val 3)
+                (Val 1)
+            )
+            
