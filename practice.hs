@@ -778,7 +778,8 @@ t = Node (Node (Leaf 1) 3 (Leaf 4)) 5
 --      deriving (Eq, Ord, Show, Read)
 
 -- tautology checker
-data Prop = Const Bool | Var Char | Not Prop | And Prop Prop | Or Prop Prop | Imply Prop Prop
+data Prop = Const Bool | Var Char | Not Prop | And Prop Prop | 
+            Or Prop Prop | Imply Prop Prop
 type Subst = Assoc Char Bool
 
 p1 :: Prop
@@ -792,6 +793,16 @@ p3 = Imply (Var 'A') (And (Var 'A') (Var 'B'))
 
 p4 :: Prop
 p4 = Imply (And (Var 'A') (Imply (Var 'A') (Var 'B'))) (Var 'B')
+
+p5 :: Prop
+p5 = Imply (Var 'A') (Or (Var 'A') (Var 'B'))
+
+-- De Morgan's Law
+p6 :: Prop
+p6 = And (Not (Var 'A')) (Not (Var 'B'))
+
+p7 :: Prop
+p7 = Not (Or (Var 'A') (Var 'B'))
 
 implication :: Bool -> Bool -> Bool
 implication p q = not (p && (not q))
@@ -824,21 +835,24 @@ istaut :: Prop -> Bool
 istaut p = and [eval p s | s <- substs p]
 
 -- abstract machine
-data Expr = Val Int | Add Expr Expr
-data Op = EVAL Expr | ADD Int
+data Expr = Val Int | Add Expr Expr | Mult Expr Expr
+data Op = ADD Expr | MULT Expr | PLUS Int | TIMES Int
 type Cont = [Op]
 
 evalam :: Expr -> Cont -> Int
 evalam (Val n) c = execam c n
-evalam (Add x y) c = evalam x (EVAL y : c)
+evalam (Mult x y) c = evalam x (MULT y : c) 
+evalam (Add x y) c = evalam x (ADD y : c)
 
 execam :: Cont -> Int -> Int
 execam [] n = n
-execam (EVAL y : c) n = evalam y (ADD n : c)
-execam (ADD m : c) n = execam c (n+m)
+execam (ADD y : c) n = evalam y (PLUS n : c)
+execam (MULT y : c) n = evalam y (TIMES n : c)
+execam (PLUS m : c) n = execam c (n+m)
+execam (TIMES m : c) n = execam c (n*m)
 
-adder :: Expr -> Int
-adder e = evalam e []
+value' :: Expr -> Int
+value' e = evalam e []
 
 -- exercises
 -- 1
@@ -921,4 +935,42 @@ expr = Add
                 (Val 3)
                 (Val 1)
             )
-            
+
+-- 6 
+evalfolde :: Expr -> Int
+evalfolde e = folde id (+) e
+
+sizefolde :: Expr -> Int
+sizefolde e = folde (\x -> 1) (+) e
+
+-- 7
+-- instance Eq a => Eq (Maybe a) where
+--      Just a == Just a = True
+--      Nothing == Nothing = True
+--      _ == _ = False
+
+-- instance Eq a => Eq [a] where
+--      [] == [] = True
+--      [x:xs] == [y:ys] = x == y && xs == ys
+--      _ == _ = False
+
+-- 8
+isequiv :: Prop -> Prop -> Bool
+isequiv p q = and [eval p s == eval q s | s <- substs p]
+
+-- 9
+expr2 :: Expr
+expr2 = Add
+            (
+            Mult
+                (Val 4)
+                (Add 
+                    (Val 5)
+                    (Val 4)
+                )
+            )
+            (
+            Mult 
+                (Val 3)
+                (Val 1)
+            )
