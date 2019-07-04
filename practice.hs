@@ -115,7 +115,7 @@ signum2 n = if n > 0 then 1 else
 -- guarded function:
 abs2 :: (Ord n, Num n) => n -> n
 abs2 n | n >= 0 = n
-      | otherwise = -n
+       | otherwise = -n
 
 -- pattern matching:
 andy :: (Bool, Bool) -> Bool
