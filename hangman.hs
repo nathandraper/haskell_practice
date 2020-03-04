@@ -1,15 +1,14 @@
 maxtries :: Int
 maxtries = 5
 
-hangman :: IO ()
-hangman = do
+main :: IO ()
+main = do
   word <- getLine
   play maxtries word $ concat $ replicate (length word) "-"
 
 play :: Int -> String -> String -> IO ()
 play tries word guessword = do
   putStrLn guessword
-  putStrLn word
   if not $ elem '-' guessword
     then do
       putStrLn "Correct! You win!"
@@ -19,12 +18,16 @@ play tries word guessword = do
         putStrLn "Out of guesses! You Lose!"
         return ()
       else do
+        putStrLn "Tries left: "
+        putStrLn $ show tries
         guess <- getChar
-        print guess
-        print guess
-        print guess
-        play (tries - 1) word $ reveal word guessword guess
+        putStrLn "\n"
+        play (setTries word guess tries) word $ reveal word guessword guess
 
 reveal :: String -> String -> Char -> String
 reveal word guessword guess = map takeletter $ zip word guessword
   where takeletter (w, g) = if guess == w then w else g
+
+setTries :: String -> Char -> Int -> Int
+setTries word guess tries | elem guess word = tries
+                          | otherwise       = tries - 1
