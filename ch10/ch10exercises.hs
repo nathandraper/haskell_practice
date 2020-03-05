@@ -47,8 +47,8 @@ readLine = do
   ch <- getCh
   if ch == '\DEL'
     then do
-      putStr "\b"
-      putStr " "
+      putChar '\b'
+      putChar ' '
       putChar '\b'
       return [ch]
     else if ch == '\n'
